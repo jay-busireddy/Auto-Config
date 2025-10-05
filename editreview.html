@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Auto-Config Preferences</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2em;
+      background: #f9f9f9;
+      color: #333;
+    }
+    h1 { font-size: 1.4em; margin-bottom: 0.5em; }
+    .config-list {
+      margin-top: 1em;
+      border-collapse: collapse;
+      width: 100%;
+    }
+    .config-list th, .config-list td {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+    }
+    .config-list th {
+      background: #eee;
+    }
+    .actions button {
+      margin: 0 2px;
+      padding: 4px 8px;
+      font-size: 0.9em;
+    }
+    .form-row {
+      margin-top: 1em;
+    }
+    .form-row input {
+      padding: 5px;
+      margin-right: 8px;
+    }
+    .form-row button {
+      padding: 5px 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Auto-Config Preferences</h1>
+
+<table class="config-list" id="configTable">
+  <thead>
+    <tr>
+      <th>Key</th>
+      <th>Value</th>
+      <th>Weight</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<div class="form-row">
+  <input type="text" id="newKey" placeholder="Key (e.g., global['color'])">
+  <input type="text" id="newValue" placeholder="Value (e.g., red)">
+  <button id="addBtn">Add Preference</button>
+</div>
+
+<script>
+const STORAGE_KEY = "autoConfigDB_v1";
+
+// load DB
+function loadDB() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) return JSON.parse(raw);
+  const db = { vocab:{}, sessions:[], configs:{}, meta:{} };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+  return db;
+}
+function saveDB(db) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+}
+
+function renderTable() {
+  const db = loadDB();
+  const tbody = document.querySelector("#configTable tbody");
+  tbody.innerHTML = "";
+  Object.keys(db.configs).forEach(key => {
+    const cfg = db.configs[key];
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${key}</td>
+      <td contenteditable="true" class="val">${cfg.value}</td>
+      <td>${cfg.weight?.toFixed ? cfg.weight.toFixed(2) : cfg.weight || "-"}</td>
+      <td class="actions">
+        <button class="save">Save</button>
+        <button class="delete">Delete</button>
+      </td>
+    `;
+    // Save button
+    tr.querySelector(".save").onclick = () => {
+      const newVal = tr.querySelector(".val").innerText.trim();
+      db.configs[key].value = newVal;
+      saveDB(db);
+      renderTable();
+    };
+    // Delete button
+    tr.querySelector(".delete").onclick = () => {
+      delete db.configs[key];
+      saveDB(db);
+      renderTable();
+    };
+    tbody.appendChild(tr);
+  });
+}
+
+document.getElementById("addBtn").onclick = () => {
+  const key = document.getElementById("newKey").value.trim();
+  const val = document.getElementById("newValue").value.trim();
+  if (!key || !val) return alert("Enter both key and value");
+  const db = loadDB();
+  db.configs[key] = { value: val, weight: 1.0, created: Date.now() };
+  saveDB(db);
+  document.getElementById("newKey").value = "";
+  document.getElementById("newValue").value = "";
+  renderTable();
+};
+
+// Initial render
+renderTable();
+</script>
+
+</body>
+</html>
